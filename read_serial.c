@@ -1,5 +1,6 @@
-//A program to read a given serial port at a given baudrate
-#include <Windows.h> //to handle the serial communications
+//A program to read a given serial port at a given baudrate, helpful for reading data sent by microcontrollers like Arduino
+//Data gathered is saves on a txt file, line by line from serial output
+#include <Windows.h> //to handle the serial communications, windows platform specific solution, unfortunately.
 //notice that this is not usable outside of windows systems (e.g POSIX-compliant operating systems such as Linux/macOS)
 #include <stdio.h>
 #include <stdlib.h>
@@ -9,7 +10,8 @@
 int main(int argc, char *argv[])
 {
     int baudrate, port;
-    int overwrite = 0;
+    int overwrite = 0; //Should theoretically print on same line and give the effect of changing measurements
+    //it works poorly and ineffectively
 
     if (argc==3) //Hopefully correct baudrate + COM port
     {
@@ -37,7 +39,7 @@ int main(int argc, char *argv[])
     //char buffer[256];
     DWORD bytesRead; //keeping track of the bytes in serial
     char serial_port[20];
-    char stop_char; //variable to check if P is pressed
+    char stop_char; //variable to check if P is pressed, usually when you want to plot the gathered data
     sprintf(serial_port, "\\\\.\\COM%d", port); //format char[] variable to provide the serial port
     FILE* fp = fopen("serial_output.txt", "w"); //output file
     FILETIME ft;
@@ -60,7 +62,7 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    dcbSerialParams.BaudRate = baudrate; //9600 should be the predefined const DCB_9600, but it's not implemented.
+    dcbSerialParams.BaudRate = baudrate; 
     dcbSerialParams.ByteSize = 8;
     dcbSerialParams.StopBits = ONESTOPBIT;
     dcbSerialParams.Parity = NOPARITY;
@@ -87,10 +89,11 @@ int main(int argc, char *argv[])
     }
     while (1)
     {
-        char buffer[256] = ""; //theoretically the buffer is 7 16bit values, 6 commas and \n -> 21bytes
+        char buffer[256] = ""; //you can ballpark the bytes your buffer will need by what the arduino sends over serial
         int pos = 0;
         char c = 0;
         while(c != '\n') { //this will read the serial port line by line, to add the necessary timestamp
+            
         //& operator returns the memory address of a variable
             if (ReadFile(hSerial, &c, 1, &bytesRead, NULL))
             {
@@ -115,7 +118,7 @@ int main(int argc, char *argv[])
         //printf("Read %d bytes from serial port: %s", bytesRead, buffer);
         if (overwrite)
         {
-            printf("\r[%llu]-> %s", milli_timestamp, buffer); //console
+            printf("\r[%llu]-> %s", milli_timestamp, buffer); //the poorly executed one line print, avoid at all cost!
             fflush(stdout);
         }
         else {printf("[%llu]-> %s \n", milli_timestamp, buffer);}
@@ -128,16 +131,17 @@ int main(int argc, char *argv[])
             stop_char = _getch(); 
             if (stop_char == 'p') //pressing p, for plot
             { 
+                //printf("Data Collection Complete. Initializing Plot..."); //implement call to plotting program?
                 break;
             }
         }
     }
 
     CloseHandle(hSerial);
-    printf("Data Collection Complete. Initializing Plot..."); //implement call to plotting program?
     fclose(fp);
+    //following lines only useful if you implement a program that automatically plots data from the txt once reading is stopped.
 
-    int result;
+    /*int result;
     // Call the other executable program
     result = system("plotdata.exe");
     // Check the result of the command
@@ -145,6 +149,6 @@ int main(int argc, char *argv[])
         printf("Plot created.\n");
     } else {
         printf("Program failed to execute.\n");
-    }
+    }*/
     return 0;
 }
